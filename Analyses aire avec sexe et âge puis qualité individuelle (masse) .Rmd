@@ -175,10 +175,6 @@ main = "Correlation entre l'aire du plastron et la masse des cincles plongeurs m
 las = 1, pch = 19)
 abline(reg_masse_males2018, col = "red", lwd = 2)
 
-plot(tab_males_plus2A2018$Area ~ tab_males_plus2A2018$Mass)
-abline(lm(tab_males_plus2A2018$Area ~ tab_males_plus2A2018$Mass))
- # represente moins bien la droite de regression lineaire donc bof
-
  # Validite ? Oui
 acf(residuals(reg_masse_males2018))
 plot(reg_masse_males2018) 
