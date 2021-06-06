@@ -1,0 +1,386 @@
+# I - IMPORT DONNEES NIDS (succes repro, dates incub, pondaison, etc...) : tableau "Nest_dippers"
+```{r}
+library(readxl)
+Nest_dippers <- read_excel("~/Master/Stage M1 Cincles plongeurs/Rapport de stage/Données/Nest dippers 2014-2019.xlsx")
+View(Nest_dippers)
+
+class(Nest_dippers)
+
+Nest_dippers <- subset(Nest_dippers, select = c(-Zone, -CR, -RD, -FN, -MD, -P, -CPF ))
+Nest_dippers$'N°' <- NULL
+Nest_dippers$'Type nid' <- NULL
+ #Suppression colonnes inutiles
+
+Nest_dippers$Year <- factor(Nest_dippers$Year,levels = c('2014','2015','2016','2017','2018','2019'), labels = c('2014','2015','2016','2017','2018','2019')) 
+Nest_dippers <- subset(Nest_dippers, Year == "2016" | Year == "2017" | Year == "2018"| Year == "2019")
+ #Suppression 2014 et 2015
+
+Nest_dippers$'Type ponte' <- factor(Nest_dippers$'Type ponte')
+Nest_dippers$'Succès envol' <- factor(Nest_dippers$'Succès envol')
+
+Nest_dippers$LD <- as.numeric (Nest_dippers$LD)
+Nest_dippers$CS <- as.numeric (Nest_dippers$CS)
+Nest_dippers$IS <- as.numeric (Nest_dippers$IS)
+Nest_dippers$EHD <- as.numeric (Nest_dippers$EHD)
+Nest_dippers$HD <- as.numeric (Nest_dippers$HD)
+ #Dates : facteurs ou numeriques ?
+
+Nest_dippers$NH <- as.numeric (Nest_dippers$NH)
+Nest_dippers$NR <- as.numeric (Nest_dippers$NR)
+Nest_dippers$NM <- as.numeric (Nest_dippers$NM)
+Nest_dippers$NF <- as.numeric (Nest_dippers$NF)
+
+summary(Nest_dippers)
+str(Nest_dippers)
+```
+
+# II - IMPORT DES COUPLES NICHEURS POUR CHAQUE NID : tableau "Nest_dippers_couples"
+```{r}
+library(readxl)
+data_nests <- read_excel("~/Master/Stage M1 Cincles plongeurs/Rapport de stage/Données/data_nests.xlsx")
+View(data_nests)
+
+Nest_dippers_couples <- merge.data.frame (Nest_dippers, data_nests, by.x = "Nom", by.y = "Nesting_site")
+
+Nest_dippers_couples <- subset(Nest_dippers_couples, Year.x == Year.y)
+ #garder seulement les annees correspondantes entre les 2 tableaux de donnees
+
+Nest_dippers_couples <- subset(Nest_dippers_couples, select = -c (Year.y))
+ #suppression colonne annee du 2nd tableau
+
+Nest_dippers_couples <- subset(Nest_dippers_couples, !is.na(Male))
+Nest_dippers_couples <- subset(Nest_dippers_couples, !is.na(Female))
+Nest_dippers_couples <- subset(Nest_dippers_couples, c(Male != "NB" & Male != "R" & Female != "NB" & Female != "R"))
+ #suppression des lignes où il manque un (ou les 2) individus : remplies na, NB ou R.
+```
+
+## A) Separation males et femelles
+```{r}
+ # Tableaux separes males et femelles avec les infos sur les nids
+Nest_dippers_males <- subset(Nest_dippers_couples, select = -c(Female))
+Nest_dippers_femelles <- subset(Nest_dippers_couples, select = -c(Male))
+ # Mettre dans l'ordre souhaite les colonnes
+Nest_dippers_males <- Nest_dippers_males[,c(15, 1, 2, 3, 14, 4:13)]
+Nest_dippers_femelles <- Nest_dippers_femelles[,c(15, 1, 2, 3, 14, 4:13)]
+```
+
+## B) Rajout des masses et aires
+```{r}
+ # Tableaux separes males et femelles avec les infos sur les nids + les aires et masses
+Nest_Area_males_plus2A <- merge.data.frame (Nest_dippers_males, tab_males_plus2A_sansdoublon, by.x = "Male", by.y = "Ringnb")
+Nest_Area_femelles_plus2A <- merge.data.frame (Nest_dippers_femelles, tab_femelles_plus2A_sansdoublon, by.x = "Female", by.y = "Ringnb")
+```
+
+## C) Rajout des oeufs non eclos (succes oeufs) et des poussins morts (survie des poussins)
+```{r}
+Nest_Area_males_plus2A$"Oeufs non eclos" <- Nest_Area_males_plus2A$CS - Nest_Area_males_plus2A$NH
+Nest_Area_femelles_plus2A$"Oeufs non eclos" <- Nest_Area_femelles_plus2A$CS - Nest_Area_femelles_plus2A$NH
+Nest_Area_males_plus2A$"Poussins morts" <- Nest_Area_males_plus2A$NH - Nest_Area_males_plus2A$NF
+Nest_Area_femelles_plus2A$"Poussins morts" <- Nest_Area_femelles_plus2A$NH - Nest_Area_femelles_plus2A$NF
+```
+
+
+# III - CORRELATION TAILLE DE PONTE ET PLASTRON : test de Spearman (males et femelles separes, annees confondues puis annee par annee)
+```{r}
+cor.test(Nest_Area_males_plus2A$CS, Nest_Area_males_plus2A$Area, method="spearman")
+table(Nest_Area_males_plus2A$CS)  # n = 263
+
+cor.test(Nest_Area_males_plus2A2016$CS, Nest_Area_males_plus2A2016$Area, method="spearman")
+table(Nest_Area_males_plus2A2016$CS)  # n = 25
+
+cor.test(Nest_Area_males_plus2A2017$CS, Nest_Area_males_plus2A2017$Area, method="spearman")
+table(Nest_Area_males_plus2A2017$CS)  # n = 67
+
+cor.test(Nest_Area_males_plus2A2018$CS, Nest_Area_males_plus2A2018$Area, method="spearman")
+table(Nest_Area_males_plus2A2018$CS)  # n = 90
+
+cor.test(Nest_Area_males_plus2A2019$CS, Nest_Area_males_plus2A2019$Area, method="spearman")
+table(Nest_Area_males_plus2A2019$CS)  # n = 81
+
+ # p-value > 0.05 pour tous : HO acceptee : non signif : pas de correlation. 
+
+
+cor.test(Nest_Area_femelles_plus2A$CS, Nest_Area_femelles_plus2A$Area, method="spearman")
+table(Nest_Area_femelles_plus2A$CS)
+ # p-value > 0.05 : HO acceptee : non signif.
+
+cor.test(Nest_Area_femelles_plus2A2016$CS, Nest_Area_femelles_plus2A2016$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif.
+table(Nest_Area_femelles_plus2A2016$CS)
+
+cor.test(Nest_Area_femelles_plus2A2017$CS, Nest_Area_femelles_plus2A2017$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif.
+table(Nest_Area_femelles_plus2A2017$CS)  # n = 69
+plot(Nest_Area_femelles_plus2A2017$CS, Nest_Area_femelles_plus2A2017$Area)
+
+cor.test(Nest_Area_femelles_plus2A2018$CS, Nest_Area_femelles_plus2A2018$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif.
+table(Nest_Area_femelles_plus2A2018$CS)
+
+cor.test(Nest_Area_femelles_plus2A2019$CS, Nest_Area_femelles_plus2A2019$Area, method="spearman")
+ # p-value = 0.038 < 0.05 : HO rejetee : rho = -0.241 : correlation !
+table(Nest_Area_femelles_plus2A2019$CS)
+```
+
+
+# IV - CORRELATION OEUFS ECLOS ET PLASTRON : test de Spearman 
+```{r}
+cor.test(Nest_Area_males_plus2A$NH, Nest_Area_males_plus2A$Area, method="spearman")
+table(Nest_Area_males_plus2A$NH)
+
+cor.test(Nest_Area_males_plus2A2016$NH, Nest_Area_males_plus2A2016$Area, method="spearman")
+table(Nest_Area_males_plus2A2016$NH)
+
+cor.test(Nest_Area_males_plus2A2017$NH, Nest_Area_males_plus2A2017$Area, method="spearman")
+table(Nest_Area_males_plus2A2017$NH)
+
+cor.test(Nest_Area_males_plus2A2018$NH, Nest_Area_males_plus2A2018$Area, method="spearman")
+table(Nest_Area_males_plus2A2018$NH)
+
+cor.test(Nest_Area_males_plus2A2019$NH, Nest_Area_males_plus2A2019$Area, method="spearman")
+table(Nest_Area_males_plus2A2019$NH)
+
+ # p-value > 0.05 pour tous : HO acceptee : non signif : pas de correlation. 
+
+
+cor.test(Nest_Area_femelles_plus2A$NH, Nest_Area_femelles_plus2A$Area, method="spearman")
+ # p-value = 0.022 < 0.05 : HO refusee : rho = 0.142 : correlation !
+table(Nest_Area_femelles_plus2A$NH)
+
+cor.test(Nest_Area_femelles_plus2A2016$NH, Nest_Area_femelles_plus2A2016$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif.
+table(Nest_Area_femelles_plus2A2016$NH)
+
+cor.test(Nest_Area_femelles_plus2A2017$NH, Nest_Area_femelles_plus2A2017$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif. 
+table(Nest_Area_femelles_plus2A2017$NH)
+
+cor.test(Nest_Area_femelles_plus2A2018$NH, Nest_Area_femelles_plus2A2018$Area, method="spearman")
+ # p-value = 0.009 < 0.05 : HO rejetee : rho = 0.274 : correlation !
+table(Nest_Area_femelles_plus2A2018$NH)  # n = 89
+plot(Nest_Area_femelles_plus2A2018$NH, Nest_Area_femelles_plus2A2018$Area, method="spearman")
+
+cor.test(Nest_Area_femelles_plus2A2019$NH, Nest_Area_femelles_plus2A2019$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif. 
+table(Nest_Area_femelles_plus2A2019$NH)
+```
+
+
+# V - CORRELATION JEUNES A L'ENVOL ET PLASTRON : test de Spearman 
+```{r}
+cor.test(Nest_Area_males_plus2A$NF, Nest_Area_males_plus2A$Area, method="spearman")
+table(Nest_Area_males_plus2A$NF)
+
+cor.test(Nest_Area_males_plus2A2016$NF, Nest_Area_males_plus2A2016$Area, method="spearman")
+table(Nest_Area_males_plus2A2016$NF)
+
+cor.test(Nest_Area_males_plus2A2017$NF, Nest_Area_males_plus2A2017$Area, method="spearman")
+table(Nest_Area_males_plus2A2017$NF)
+
+cor.test(Nest_Area_males_plus2A2018$NF, Nest_Area_males_plus2A2018$Area, method="spearman")
+table(Nest_Area_males_plus2A2018$NF)
+
+cor.test(Nest_Area_males_plus2A2019$NF, Nest_Area_males_plus2A2019$Area, method="spearman")
+table(Nest_Area_males_plus2A2019$NF)
+
+ # p-value > 0.05 pour tous : HO acceptee : non signif.
+
+cor.test(Nest_Area_femelles_plus2A$NF, Nest_Area_femelles_plus2A$Area, method="spearman")
+table(Nest_Area_femelles_plus2A$NF)
+
+cor.test(Nest_Area_femelles_plus2A2016$NF, Nest_Area_femelles_plus2A2016$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2016$NF)
+
+cor.test(Nest_Area_femelles_plus2A2017$NF, Nest_Area_femelles_plus2A2017$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2017$NF)
+
+cor.test(Nest_Area_femelles_plus2A2018$NF, Nest_Area_femelles_plus2A2018$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2018$NF)
+ # p-value = 0.025 et rho = 0.238 : HO refusee : correlation !
+
+cor.test(Nest_Area_femelles_plus2A2019$NF, Nest_Area_femelles_plus2A2019$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2019$NF)
+```
+
+
+# VI - CORRELATION SUCCES ENTRE PONTE ET ECLOSION, ET PLASTRON : test de Spearman 
+```{r}
+cor.test(Nest_Area_males_plus2A$"Oeufs non eclos", Nest_Area_males_plus2A$Area, method="spearman")
+table(Nest_Area_males_plus2A$"Oeufs non eclos")
+
+cor.test(Nest_Area_males_plus2A2016$"Oeufs non eclos", Nest_Area_males_plus2A2016$Area, method="spearman")
+table(Nest_Area_males_plus2A2016$"Oeufs non eclos")
+
+cor.test(Nest_Area_males_plus2A2017$"Oeufs non eclos", Nest_Area_males_plus2A2017$Area, method="spearman")
+table(Nest_Area_males_plus2A2017$"Oeufs non eclos")
+
+cor.test(Nest_Area_males_plus2A2018$"Oeufs non eclos", Nest_Area_males_plus2A2018$Area, method="spearman")
+table(Nest_Area_males_plus2A2018$"Oeufs non eclos")
+
+cor.test(Nest_Area_males_plus2A2019$"Oeufs non eclos", Nest_Area_males_plus2A2019$Area, method="spearman")
+table(Nest_Area_males_plus2A2019$"Oeufs non eclos")
+
+ # Pour toutes les annees sur les males : p-value > 0.05 : HO acceptee : non signif. 
+
+
+cor.test(Nest_Area_femelles_plus2A$"Oeufs non eclos", Nest_Area_femelles_plus2A$Area, method="spearman")
+ # p-value = 0.013 et rho = -0.157 : HO refusee : correlation !!!
+table(Nest_Area_femelles_plus2A$"Oeufs non eclos")
+
+cor.test(Nest_Area_femelles_plus2A2016$"Oeufs non eclos", Nest_Area_femelles_plus2A2016$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif : pas de correlation. 
+table(Nest_Area_femelles_plus2A2016$"Oeufs non eclos")
+
+cor.test(Nest_Area_femelles_plus2A2017$"Oeufs non eclos", Nest_Area_femelles_plus2A2017$Area, method="spearman")
+ # p-value > 0.05 : HO acceptee : non signif : pas de correlation. 
+table(Nest_Area_femelles_plus2A2017$"Oeufs non eclos")
+
+
+cor.test(Nest_Area_femelles_plus2A2018$"Oeufs non eclos", Nest_Area_femelles_plus2A2018$Area, method="spearman")
+ # p-value = 0.0002228 < 0.05 : HO rejetee : rho = -0.388 : correlation !!! Tendance à avoir plus d'oeufs non eclos pour les individus aux petits plastrons.
+table(Nest_Area_femelles_plus2A2018$"Oeufs non eclos")  # n = 86
+plot(Nest_Area_femelles_plus2A2018$"Oeufs non eclos", Nest_Area_femelles_plus2A2018$Area)
+
+
+cor.test(Nest_Area_femelles_plus2A2019$"Oeufs non eclos", Nest_Area_femelles_plus2A2019$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2019$"Oeufs non eclos")
+ # p-value > 0.05 : HO acceptee : non signif : pas de correlation. 
+```
+
+
+# VII - CORRELATION SUCCES REPRODUCTEUR (poussins morts entre naissance et envol) ET PLASTRON : test de Spearman 
+```{r}
+cor.test(Nest_Area_males_plus2A$"Poussins morts", Nest_Area_males_plus2A$Area, method="spearman")
+table(Nest_Area_males_plus2A$"Poussins morts")
+
+cor.test(Nest_Area_males_plus2A2016$"Poussins morts", Nest_Area_males_plus2A2016$Area, method="spearman")
+table(Nest_Area_males_plus2A2016$"Poussins morts")
+ # p-value = 0.042 et rho = 0.436 : HO refusee : correlation !
+
+cor.test(Nest_Area_males_plus2A2017$"Poussins morts", Nest_Area_males_plus2A2017$Area, method="spearman")
+table(Nest_Area_males_plus2A2017$"Poussins morts")
+
+cor.test(Nest_Area_males_plus2A2018$"Poussins morts", Nest_Area_males_plus2A2018$Area, method="spearman")
+table(Nest_Area_males_plus2A2018$"Poussins morts")
+
+cor.test(Nest_Area_males_plus2A2019$"Poussins morts", Nest_Area_males_plus2A2019$Area, method="spearman")
+table(Nest_Area_males_plus2A2019$"Poussins morts")
+
+ # Pour toutes les annees sur les males sauf 2016 : p-value > 0.05 : HO acceptee : non signif. 
+
+
+cor.test(Nest_Area_femelles_plus2A$"Poussins morts", Nest_Area_femelles_plus2A$Area, method="spearman")
+table(Nest_Area_femelles_plus2A$"Poussins morts")
+
+cor.test(Nest_Area_femelles_plus2A2016$"Poussins morts", Nest_Area_femelles_plus2A2016$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2016$"Poussins morts")
+
+cor.test(Nest_Area_femelles_plus2A2017$"Poussins morts", Nest_Area_femelles_plus2A2017$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2017$"Poussins morts")
+
+cor.test(Nest_Area_femelles_plus2A2018$"Poussins morts", Nest_Area_femelles_plus2A2018$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2018$"Poussins morts")
+
+cor.test(Nest_Area_femelles_plus2A2019$"Poussins morts", Nest_Area_femelles_plus2A2019$Area, method="spearman")
+table(Nest_Area_femelles_plus2A2019$"Poussins morts")
+
+ # Pour toutes les annees sur les femelles : p-value > 0.05 : HO acceptee : non signif. 
+```
+ 
+
+# VIII - ASSORTATIVE MATINGS
+## A) Creation du tableau (nids-couple-aires des 2 individus) : tableau "Assortative_matings" 
+```{r}
+Assortative_matings <- merge.data.frame (Nest_dippers_couples, tab_males_plus2A_sansdoublon, by.x = "Male", by.y = "Ringnb")
+Assortative_matings <- subset (Assortative_matings, select = c(Nom,Year.x, Male, Female, Area , num_ponte))
+colnames (Assortative_matings) <- (c("Nom", "Year","Male","Female","Area male","Num ponte"))
+
+Assortative_matings <- merge.data.frame (Assortative_matings, tab_femelles_plus2A_sansdoublon, by.x = "Female", by.y = "Ringnb")  
+ # Rajout des aires des femelles
+Assortative_matings <- subset (Assortative_matings, select = -c(Mass))
+colnames (Assortative_matings) <- (c("Female", "Nom","Year","Male","Area male","Num ponte", "Area female"))
+
+Assortative_matings <- Assortative_matings [, c(2,3,6,4,5,1,7)]
+ # Reordonner les colonnes
+Assortative_matings <- Assortative_matings [order(Assortative_matings$Nom, Assortative_matings$Year, Assortative_matings$'Num ponte', decreasing=F),]
+ # Reordonner les lignes
+```
+
+## B) Test de correlation : Pearson's r
+```{r}
+Assortative_matings1nichee <- subset(Assortative_matings, `Num ponte` == 1)
+ # 1 seule nichee (enleve les couples en double sur la même année)
+cor.test (Assortative_matings1nichee$`Area male`, Assortative_matings1nichee$`Area female`)
+ # p-value = 0.03182 : HO rejetee, signif : r = 0.1986144. Correlation. n = 117
+
+shapiro.test(Assortative_matings1nichee$`Area female`) # p-value < 0.05 : signif : pas normale
+hist(Assortative_matings1nichee$`Area female`, breaks = 30) # à peu pres normale
+qqnorm(Assortative_matings1nichee$`Area female`) # résidus normaux
+shapiro.test(Assortative_matings1nichee$`Area male`) # p-value < 0.05 : signif : pas normale
+hist(Assortative_matings1nichee$`Area male`, breaks = 30) # à peu pres normale
+qqnorm(Assortative_matings1nichee$`Area male`) # résidus normaux
+
+
+Assortative_matings_20161nichee <- subset(Assortative_matings1nichee, c(Year == "2016"))
+cor.test (Assortative_matings_20161nichee$`Area male`, Assortative_matings_20161nichee$`Area female`)
+ # Non signif, attention echantillon de 14 ind seulement
+
+Assortative_matings_20171nichee <- subset(Assortative_matings1nichee, c(Year == "2017"))
+cor.test (Assortative_matings_20171nichee$`Area male`, Assortative_matings_20171nichee$`Area female`)
+ # Non signif. n =  32
+
+Assortative_matings_20181nichee <- subset(Assortative_matings1nichee, c(Year == "2018"))
+cor.test (Assortative_matings_20181nichee$`Area male`, Assortative_matings_20181nichee$`Area female`)
+ # p-value = 0.01641 < 0.05 : HO rejetee, signif : 0.3483692. Correlation en 2018 ! (Force de 0.34) Valide ? n =47
+plot(Assortative_matings_20181nichee$`Area male`, Assortative_matings_20181nichee$`Area female`)
+
+shapiro.test(Assortative_matings_20181nichee$`Area female`) # p-value < 0.05 : signif : pas normale
+hist(Assortative_matings_20181nichee$`Area female`, breaks = 30) # à peu pres normale
+qqnorm(Assortative_matings_20181nichee$`Area female`) # résidus normaux
+shapiro.test(Assortative_matings_20181nichee$`Area male`) # p-value < 0.05 : signif : pas normale
+hist(Assortative_matings_20181nichee$`Area male`, breaks = 30) # à peu pres normale
+qqnorm(Assortative_matings_20181nichee$`Area male`) # résidus normaux
+
+
+Assortative_matings_20191nichee <- subset(Assortative_matings1nichee, c(Year == "2019"))
+cor.test (Assortative_matings_20191nichee$`Area male`, Assortative_matings_20191nichee$`Area female`)
+ #  Non signif. n = 24
+```
+
+## C) Modeles de regression lineaire : toutes années confondues et 2018
+```{r}
+reg_matings <- lm (Assortative_matings1nichee$`Area male` ~ Assortative_matings1nichee$`Area female`)
+summary (reg_matings)
+ # y = 0.202x + 13.124 et r² = 0.031. 
+
+ # Validite ? Oui
+acf(residuals(reg_matings)) # absence d'autocorrelation entre les residus 
+plot(reg_matings) 
+
+
+reg_matings_2018 <- lm (Assortative_matings_20181nichee$`Area male` ~ Assortative_matings_20181nichee$`Area female`)
+summary (reg_matings_2018)
+ # y = 0.419x + 10.077 et r² = 0.102. 
+
+ # Validite ? Oui
+acf(residuals(reg_matings_2018)) # absence d'autocorrelation entre les residus 
+plot(reg_matings_2018) 
+```
+
+## D) Representations graphiques : toutes années confondues et 2018
+```{r}
+plot(Assortative_matings1nichee$`Area male` ~ Assortative_matings1nichee$`Area female`,
+xlab = "Aire du plastron des femelles adultes (cm²)",
+ylab = "Aire du plastron des males adultes (cm²)",
+main = "Appariemment assortatif des couples reproducteurs de cincles plongeurs adultes captures de 2016 à 2019",
+las = 1, pch = 19)
+abline(lm(Assortative_matings1nichee$`Area male` ~ Assortative_matings1nichee$`Area female`),col = "red", lwd = 2)
+
+
+plot(Assortative_matings_20181nichee$`Area male` ~ Assortative_matings_20181nichee$`Area female`,
+xlab = "Aire du plastron des femelles adultes (cm²)",
+ylab = "Aire du plastron des males adultes (cm²)",
+main = "Appariemment assortatif des couples reproducteurs de cincles plongeurs adultes captures en 2018",
+las = 1, pch = 19)
+abline(lm(Assortative_matings_20181nichee$`Area male` ~ Assortative_matings_20181nichee$`Area female`),col = "red", lwd = 2)
+```

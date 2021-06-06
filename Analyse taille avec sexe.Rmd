@@ -1,0 +1,207 @@
+# IMPORTATION DES DONNEES ET PACKAGES
+```{r}
+install.packages("rmarkdown")
+library(readxl)
+datatot <- read_excel("~/Master/Stage M1 Cincles plongeurs/Rapport de stage/Données/data_total.xlsx")
+class(datatot)
+summary(datatot)
+str(datatot)
+datatot
+
+datatot$Year <- factor(datatot$Year,levels = c('2016','2017','2018','2019'), labels = c('2016','2017','2018','2019')) 
+datatot$Age <- factor(datatot$Age)
+datatot$Sex <- factor(datatot$Sex)
+datatot$Mass <- as.numeric(datatot$Mass)
+datatot$Area <- as.numeric(datatot$Area)
+summary(datatot)
+str(datatot)
+```
+
+# TABLEAU AVEC DONNEES A UTILISER
+```{r}
+tab1 <- data.frame(datatot$Ringnb,datatot$Place,datatot$Year,datatot$Age,datatot$Sex,datatot$Mass,datatot$Area)
+colnames(tab1) <- c("Ringnb","Place","Year","Age","Sex","Mass","Area")
+tab1 <- subset(tab1, !is.na(Age))  #soutire les données nulles pour l'ége
+summary(tab1)
+str(tab1)
+```
+
+
+# I - COMPARAISON MALES/FEMELLES
+## A) De 1A
+```{r}
+tab_males_2A <- droplevels(subset(tab1,Sex == "M" & Age == "2A", select = c(Ringnb, Area) ))  #tableau des Aires avec seulement les méles de 1A
+summary(tab_males_2A)  #moyenne : 15.91
+
+tab_femelles_2A <- subset(tab1,Sex == "F" & Age == "2A", select = c(Ringnb, Area) )  #tableau des Aires avec seulement les femelles de 1A
+summary(tab_femelles_2A)  #moyenne : 15.18
+
+
+var.test(tab_males_2A$Area, tab_femelles_2A$Area)  
+ # Fisher : p-value = 0.822 > 0.05 : HO ne peut étre refusée : égalité des variances
+
+t.test(tab_males_2A$Area, tab_femelles_2A$Area, paired=F, var.equal=T, alternative="two.sided")  
+ #student 2 echantillons indépendants avec variances égales : p-value = 0.0007762 < 0.05 : HO rejetée.
+```
+
+## B) De 2A+ 
+```{r}
+tab_individus_plus2A = tab1
+tab_individus_plus2A <- tab_individus_plus2A[order(tab_individus_plus2A$Ringnb, tab_individus_plus2A$Year, decreasing=F),]
+ #ordonner par le numéro de la bague puis par l'année
+
+tab_individus_plus2A <- subset(tab_individus_plus2A, Age != "2A")    #enlever les 1A
+
+tab_individus_plus2A_sansdoublon = tab_individus_plus2A[-which(duplicated(tab_individus_plus2A$Ringnb)),]
+table(duplicated(tab_individus_plus2A_sansdoublon$Ringnb))  #que des false donc toutes les répétitions (=true) sont enlevées
+table(duplicated(tab_individus_plus2A$Ringnb))
+
+tab_males_plus2A_sansdoublon <- subset(tab_individus_plus2A_sansdoublon, Sex =="M", select = c(Ringnb, Mass, Area))
+summary(tab_males_plus2A_sansdoublon) #moyenne : 16.35
+
+tab_femelles_plus2A_sansdoublon <- subset(tab_individus_plus2A_sansdoublon, Sex =="F", select = c(Ringnb, Mass, Area))
+summary(tab_femelles_plus2A_sansdoublon)  #moyenne : 15.62
+
+var.test(tab_males_plus2A_sansdoublon$Area, tab_femelles_plus2A_sansdoublon$Area) 
+ #Fisher : p-value = 0.03084 < 0.05 : HO refusée : variances ne sont pas égales
+
+t.test(tab_males_plus2A_sansdoublon$Area, tab_femelles_plus2A_sansdoublon$Area, paired=F, var.equal=F, alternative="two.sided")
+ #Test t de Welsh : p-value = 0.00196 < 0.05 : Ho rejetée.
+```
+ # DIFFERENCES SIGNIFICATIVES ENTRE LES 2 SEXES POUR LES JUVENILES (1A) ET LES ADULTES
+
+## C) Tableaux et representations graphiques
+```{r}
+
+boxplot(tab_males_2A$Area,tab_femelles_2A$Area,tab_males_plus2A_sansdoublon$Area, tab_femelles_plus2A_sansdoublon$Area,
+        names = list("Males","Femelles","Males","Femelles"),
+        ylab = "Aire du plastron (cm²)",
+        main = "Aire du plastron des cincles plongeurs en fonction de l'age et du sexe",
+        col = c ("#EDD837", "#EDD837", "#F97D06", "#F97D06"),
+        cex = 0,lwd = 1, lty = 7,
+        las=1)
+legend ("topright", legend = c("Individus d'un an", "Individus de deux ans et plus"), pch = 15, cex = 1, col = c("#EDD837", "#F97D06"))
+```
+
+
+# II - COMPARAISON 2A/+2A
+## A) Pour les males
+```{r}
+tab_males_2Aetplus2A <- merge.data.frame (tab_males_2A,tab_males_plus2A_sansdoublon, by.x= "Ringnb", by.y = "Ringnb")
+ #merge : fusionner dans un seul tableau les aires des ind 1A et 2A+ pour les ringnb 
+colnames(tab_males_2Aetplus2A) <- c("Ringnb", "Area (2A)", "Mass", "Area (+2A)")
+
+t.test(tab_males_2Aetplus2A$"Area (2A)", tab_males_2Aetplus2A$"Area (+2A)" ,paired=T)  
+ #student 2 echantillons appariés : p-value = 0.553 > 0.05 : HO acceptée. 
+```
+
+## B) Pour les femelles
+```{r}
+tab_femelles_2Aetplus2A <- merge.data.frame (tab_femelles_2A, tab_femelles_plus2A_sansdoublon, by.x = "Ringnb", by.y = "Ringnb")
+colnames(tab_femelles_2Aetplus2A) <- c("Ringnb", "Area (2A)", "Mass", "Area (+2A)")
+
+t.test(tab_femelles_2Aetplus2A$`Area (2A)`,tab_femelles_2Aetplus2A$`Area (+2A)`, paired = T)
+ #student 2 echantillons appariés : p-value = 0.0455 < 0.05 : HO rejetée.
+```
+ #DIFFERENCE SIGNIFICATIVE ENTRE 1A ET 2A+ POUR LES FEMELLES, MAIS PAS POUR LES MALES
+
+
+# III - CORRELATION MASSE ET PLASTRON
+## A) Test Pearson's r et regression lineaire : individus de 2A+ (males et femelles ensemble, sans doublons) années confondues 
+```{r}
+ # En enlevant les doublons (donc aucune repetition d'individus dans les differentes annees)
+
+cor.test(tab_individus_plus2A_sansdoublon$Mass,tab_individus_plus2A_sansdoublon$Area)
+ ## p-value = 0.02696 < 0.05 et r = 0.1073072 : HO refusée : correlation.
+
+reg_masse_adultes <- lm(tab_individus_plus2A_sansdoublon$Mass ~ tab_individus_plus2A_sansdoublon$Area)
+summary(reg_masse_adultes)
+ # y = 0.252x + 56.547 et r² = 0.009
+
+plot(tab_individus_plus2A_sansdoublon$Mass ~ tab_individus_plus2A_sansdoublon$Area,
+xlab = "Aire du plastron des adultes (cm²)",
+ylab = "Masse des adultes (g)",
+main = "Correlation entre l'aire du plastron et la masse des cincles plongeurs adultes",
+las = 1, pch = 19, lwd = 0.2)
+abline(reg_masse_adultes, col = "red", lwd = 2)
+
+ # Validite ? Oui
+acf(residuals(reg_masse_adultes))
+plot(reg_masse_adultes)
+```
+
+## B) Test Pearson's r et regression lineaire : mâles/femelles de 2A+ (avec les doublons/recaptures) annee par annee
+### 1) Pour les males
+```{r}
+ # Males et femelles separes; avec doublons : car comme c'est par année, l'effet recapture n'a pas lieu.
+
+tab_males_plus2A <- subset (tab_individus_plus2A, c(Sex == "M"))
+
+tab_males_plus2A2016 <- subset (tab_males_plus2A, c(Year == "2016"))
+cor.test(tab_males_plus2A2016$Mass, tab_males_plus2A2016$Area)
+ #p-value  > 0.05 : Ho acceptée.
+
+tab_males_plus2A2017 <- subset (tab_males_plus2A, c(Year == "2017"))
+cor.test(tab_males_plus2A2017$Mass, tab_males_plus2A2017$Area)
+ #p-value  > 0.05 : Ho acceptée. 
+
+tab_males_plus2A2018 <- subset (tab_males_plus2A, c(Year == "2018"))
+cor.test(tab_males_plus2A2018$Mass, tab_males_plus2A2018$Area)
+ # p-value = 0.0103 < 0.05 et r = 0.2448088 : HO refusée : corrélation ! Validité ? 
+
+shapiro.test(tab_males_plus2A2018$Mass) # p-value = 0.1179 : HO acceptée : suit une loi normale
+hist(tab_males_plus2A2018$Mass, breaks = 30)
+qqnorm(tab_males_plus2A2018$Mass) # normalité des résidus : oui
+shapiro.test(tab_males_plus2A2018$Area) # HO rejetée : pas normale
+hist(tab_males_plus2A2018$Area, breaks = 30)
+qqnorm(tab_males_plus2A2018$Area) # normalité des résidus : oui
+ # Valide.
+
+tab_males_plus2A2019 <- subset (tab_males_plus2A, c(Year == "2019"))
+cor.test(tab_males_plus2A2019$Mass, tab_males_plus2A2019$Area)
+ #p-value  > 0.05 : Ho acceptée.
+
+ # CORRELATION SEULEMENT POUR LES MALES EN 2018
+
+
+reg_masse_males2018 <- lm(tab_males_plus2A2018$Mass ~ tab_males_plus2A2018$Area)
+summary(reg_masse_males2018)
+ # y =  0.3139x +  59.3032 et r² = 0.051
+
+plot(tab_males_plus2A2018$Mass ~ tab_males_plus2A2018$Area,
+xlab = "Aire du plastron des males adultes (cm²)",
+ylab = "Masse des males adultes (g)",
+main = "Correlation entre l'aire du plastron et la masse des cincles plongeurs males adultes captures en 2018",
+las = 1, pch = 19)
+abline(reg_masse_males2018, col = "red", lwd = 2)
+
+plot(tab_males_plus2A2018$Area ~ tab_males_plus2A2018$Mass)
+abline(lm(tab_males_plus2A2018$Area ~ tab_males_plus2A2018$Mass))
+ # represente moins bien la droite de regression lineaire donc bof
+
+ # Validite ? Oui
+acf(residuals(reg_masse_males2018))
+plot(reg_masse_males2018) 
+```
+
+### 2) Pour les femelles
+```{r}
+tab_femelles_plus2A <- subset (tab_individus_plus2A, c(Sex == "F"))
+
+
+tab_femelles_plus2A2016 <- subset (tab_femelles_plus2A, c(Year == "2016"))
+cor.test(tab_femelles_plus2A2016$Mass, tab_femelles_plus2A2016$Area)
+ #p-value  > 0.05 : Ho acceptée.
+
+tab_femelles_plus2A2017 <- subset (tab_femelles_plus2A, c(Year == "2017"))
+cor.test(tab_femelles_plus2A2017$Mass, tab_femelles_plus2A2017$Area)
+ #p-value  > 0.05 : Ho acceptée.
+
+tab_femelles_plus2A2018 <- subset (tab_femelles_plus2A, c(Year == "2018"))
+cor.test(tab_femelles_plus2A2018$Mass, tab_femelles_plus2A2018$Area)
+ # p-value  > 0.05 : Ho acceptée. 
+
+tab_femelles_plus2A2019 <- subset (tab_femelles_plus2A, c(Year == "2019"))
+cor.test(tab_femelles_plus2A2019$Mass, tab_femelles_plus2A2019$Area)
+ #p-value  > 0.05 : Ho acceptée. 
+```
